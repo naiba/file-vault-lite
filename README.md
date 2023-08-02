@@ -11,8 +11,8 @@ services:
     image: ghcr.io/naiba/file-vault-lite:latest
     restart: always
     environment:
-      - FV_USERNAME: username
-      - FV_PASSWORD: password
+      - "FV_USERNAME=username"
+      - "FV_PASSWORD=password"
     ports:
       - "8080:8080"
     volumes:
