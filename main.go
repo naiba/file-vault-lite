@@ -3,10 +3,12 @@ package main
 import (
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 )
 
 const (
@@ -44,6 +46,8 @@ func ListFiles(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var files []os.FileInfo
+
 	fmt.Fprintln(w, "<h1>File Vault Lite</h1>")
 	fmt.Fprintln(w, "<ul>")
 	err := filepath.Walk(uploadDir, func(path string, info os.FileInfo, err error) error {
@@ -53,9 +57,24 @@ func ListFiles(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(w, "<li><a href=\"/download?filename=%s\">%s</a> (%s, %s)</li>", info.Name(), info.Name(), humanReadableSize(info.Size()), info.ModTime().Format("2006-01-02 15:04:05"))
+		files = append(files, info)
 		return nil
 	})
+
+	slices.SortFunc(files, func(a, b fs.FileInfo) int {
+		if a.ModTime().After(b.ModTime()) {
+			return -1
+		}
+		if a.ModTime().Before(b.ModTime()) {
+			return 1
+		}
+		return 0
+	})
+
+	for _, info := range files {
+		fmt.Fprintf(w, "<li><a href=\"/download?filename=%s\">%s</a> (%s, %s)</li>", info.Name(), info.Name(), humanReadableSize(info.Size()), info.ModTime().Format("2006-01-02 15:04:05"))
+	}
+
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		fmt.Fprintf(w, "Error: %v", err)
